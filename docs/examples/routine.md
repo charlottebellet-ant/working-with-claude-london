@@ -25,7 +25,7 @@ morning you read one short block. If it says NOT READY, that is the first thing
 to look at before anyone opens a pull request.
 
 Variations to try:
-- Add "also run the app for 30 seconds and curl /api/health" to catch startup
+- Add "also run the app on the demo profile for 30 seconds and curl /api/health" to catch startup
   failures that the tests would not.
 - Change "report only" to "open a draft PR with the fix if a single test fails"
   once the team trusts the routine.

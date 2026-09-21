@@ -6,7 +6,7 @@ The whole loop once, in your own clone: onboard, plan, build, review, ship. The 
 
 ## What you need
 
-- `todo-app` open in a Claude Code session, all three "are you green" checks passed (see `workshop/SETUP.md`).
+- `ops-dashboard` open in a Claude Code session, all three "are you green" checks passed (see `workshop/SETUP.md`).
 - The ticket is `docs/tickets/TODO-231.md`; the brief and the definition of done are in `docs/PRE-WORK.md` and repeated below.
 
 ## Step 1: explain this codebase. Retell it in two lines

@@ -10,7 +10,7 @@ The ticket is `docs/tickets/TODO-232.md`, server-side validation. Ask for three 
 
 ```
 Read docs/tickets/TODO-232.md. Do it with three subagents, in this order:
-- auditor: find every entry point that writes a todo and list what is currently unchecked. Report a list, no code.
+- auditor: find every request parameter that reaches a database query and list what is currently unchecked. Report a list, no code.
 - fixer: implement the validation the ticket asks for, following the auditor's list. Frontend untouched.
 - verifier: write the tests, run ./mvnw test and npm test, and report both counts against the baseline (Java 25, Jest 48).
 Give me each agent's summary, then the combined result. Do not paste their full transcripts into this session.
@@ -28,10 +28,10 @@ Read the routine back. Report only, nothing that pushes. Then find it in your li
 
 ## Step 3: start a remote session. Close the lid
 
-Hand a small task to a session that runs somewhere else. The ticket is `docs/tickets/TODO-233.md`, a stats endpoint:
+Hand a small task to a session that runs somewhere else. The ticket is `docs/tickets/TODO-233.md`, a summary endpoint:
 
 ```
-Start a remote session on this repository for docs/tickets/TODO-233.md: add GET /api/todos/stats with tests, run both suites, open a PR. I will check on my phone.
+Start a remote session on this repository for docs/tickets/TODO-233.md: add GET /api/summary with tests, run both suites, open a PR. I will check on my phone.
 ```
 
 Close the lid. Open the Claude app on your phone if you have it and watch the session. Path C (Claude Code on the web): you are already remote; open the same session on your phone and show the mentor.

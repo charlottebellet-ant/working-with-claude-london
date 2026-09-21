@@ -1,8 +1,8 @@
 {
-  "name": "todo-app-frontend",
+  "name": "ops-dashboard-frontend",
   "version": "0.1.0",
   "private": true,
-  "description": "Jest tests for the Marlowe & Finch task tracker frontend",
+  "description": "Jest tests for the Marlowe & Finch operations dashboard frontend",
   "scripts": {
     "test": "jest"
   },

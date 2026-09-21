@@ -14,7 +14,8 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
-      - run: ./mvnw -q test
+      # The tests run on the in-memory demo profile; no PostgreSQL service is needed.
+      - run: SPRING_PROFILES_ACTIVE=demo ./mvnw -q test
 
   frontend:
     name: Frontend tests
@@ -25,5 +26,4 @@ jobs:
         with:
           node-version: "20"
           cache: npm
-      - run: npm ci
-      - run: npm test
+      - run: npm ci && npm test

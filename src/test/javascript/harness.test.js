@@ -26,7 +26,7 @@ describe('test harness', () => {
   });
 
   test('loadApp mounts the page and every registered element is reachable', async () => {
-    const { document } = await loadApp([]);
+    const { document } = await loadApp();
     for (const id of REGISTERED_IDS) {
       expect(document.getElementById(id)).not.toBeNull();
     }

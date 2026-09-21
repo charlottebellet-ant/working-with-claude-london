@@ -2,7 +2,7 @@
  * Test harness for the frontend.
  *
  * loadApp() puts index.html into the jsdom document, replaces fetch with a small
- * in-memory fake of the /api/todos endpoints, requires app.js and starts it.
+ * in-memory fake of every /api endpoint, requires app.js and starts it.
  *
  * REGISTERED_IDS lists every element id the harness knows about. harness.test.js
  * checks that index.html contains no id outside this list, so that anyone adding a
@@ -19,19 +19,67 @@ const REGISTERED_IDS = [
   'app-header',
   'app-title',
   'app-subtitle',
-  'todo-form',
-  'todo-input',
-  'todo-priority',
-  'add-button',
-  'filters',
-  'filter-all',
-  'filter-open',
-  'filter-done',
-  'todo-list',
-  'list-footer',
-  'remaining-count',
-  'clear-done'
+  'range-form',
+  'range-from',
+  'range-to',
+  'range-apply',
+  'preset-7',
+  'preset-30',
+  'preset-90',
+  'status-line',
+  'kpis',
+  'kpi-on-time',
+  'kpi-open-tickets',
+  'kpi-revenue',
+  'kpi-orders',
+  'chart-on-time',
+  'chart-tickets',
+  'late-table',
+  'late-body',
+  'vendors-list'
 ];
+
+const TODAY = '2026-09-21';
+
+/** Fixtures shaped like the real API responses (numbers from docs/data/ANSWER-KEY.md). */
+const FIXTURES = {
+  health: { status: 'UP', today: TODAY },
+  kpis: {
+    from: '2026-08-22',
+    to: TODAY,
+    onTimeRate: 0.937,
+    deliveries: 651,
+    onTimeDeliveries: 610,
+    openTickets: 114,
+    revenue: 360095.5,
+    orders: 624
+  },
+  onTime: [
+    { carrier: 'Harbour Express', delivered: 125, onTime: 120, rate: 0.96 },
+    { carrier: 'Kessler Logistics', delivered: 265, onTime: 238, rate: 0.8981 },
+    { carrier: 'Northwind Freight', delivered: 168, onTime: 162, rate: 0.9643 },
+    { carrier: 'Redwood Couriers', delivered: 93, onTime: 90, rate: 0.9677 }
+  ],
+  late: [
+    { orderRef: 'MF-01801', carrier: 'Kessler Logistics', promisedDate: '2026-09-12', deliveredDate: '2026-09-17', daysLate: 5 },
+    { orderRef: 'MF-01755', carrier: 'Kessler Logistics', promisedDate: '2026-09-10', deliveredDate: '2026-09-13', daysLate: 3 },
+    { orderRef: 'MF-01790', carrier: 'Harbour Express', promisedDate: '2026-09-15', deliveredDate: '2026-09-16', daysLate: 1 }
+  ],
+  ticketsByCategory: [
+    { category: 'Delivery delay', open: 41, total: 90 },
+    { category: 'Billing question', open: 26, total: 53 },
+    { category: 'Damaged on arrival', open: 22, total: 51 },
+    { category: 'Missing parts', open: 16, total: 40 },
+    { category: 'Warranty claim', open: 9, total: 29 }
+  ],
+  vendors: [
+    { id: 3, name: 'Volta Parts GmbH', category: 'Spare parts', annualSpend: 238000, contractEnd: '2026-10-15', noticeDays: 30, owner: 'Hanna Lindqvist', daysUntilContractEnd: 24, inNoticeWindow: true },
+    { id: 7, name: 'Lumen Creative', category: 'Marketing agency', annualSpend: 62000, contractEnd: '2026-10-31', noticeDays: 45, owner: 'Sofia Marchetti', daysUntilContractEnd: 40, inNoticeWindow: true },
+    { id: 1, name: 'Kessler Logistics', category: 'Carrier', annualSpend: 412000, contractEnd: '2026-11-30', noticeDays: 90, owner: 'Priya Nandakumar', daysUntilContractEnd: 70, inNoticeWindow: true },
+    { id: 5, name: 'HelpSpark', category: 'Support desk software', annualSpend: 31800, contractEnd: '2026-12-31', noticeDays: 30, owner: 'Aisha Rahman', daysUntilContractEnd: 101, inNoticeWindow: false },
+    { id: 2, name: 'BrightLeaf Packaging', category: 'Packaging', annualSpend: 86500, contractEnd: '2027-03-31', noticeDays: 60, owner: 'Tom Aldridge', daysUntilContractEnd: 191, inNoticeWindow: false }
+  ]
+};
 
 function readIndexHtml() {
   return fs.readFileSync(HTML_PATH, 'utf8');
@@ -47,12 +95,25 @@ function extractIds(html) {
   return ids;
 }
 
+function parseUrl(url) {
+  const [pathname, query] = url.split('?');
+  const params = {};
+  if (query) {
+    query.split('&').forEach((pair) => {
+      const [key, value] = pair.split('=');
+      params[decodeURIComponent(key)] = decodeURIComponent(value || '');
+    });
+  }
+  return { pathname, params };
+}
+
 /**
- * A tiny fake of the backend. Keeps todos in memory and records every call.
+ * A tiny fake of the backend. Serves the fixtures (or the overrides given) for each
+ * /api endpoint and records every call. `failing` lists paths that answer 500.
  */
-function createFakeApi(initialTodos) {
-  const todos = (initialTodos || []).map((t) => Object.assign({}, t));
-  let nextId = todos.reduce((max, t) => Math.max(max, t.id), 0) + 1;
+function createFakeApi(overrides) {
+  const data = Object.assign({}, FIXTURES, overrides || {});
+  const failing = (overrides && overrides.failing) || [];
   const calls = [];
 
   function json(status, body) {
@@ -63,55 +124,47 @@ function createFakeApi(initialTodos) {
     });
   }
 
-  function fetchImpl(url, options) {
-    const method = ((options && options.method) || 'GET').toUpperCase();
-    calls.push({ url, method, body: options && options.body ? JSON.parse(options.body) : undefined });
+  function fetchImpl(url) {
+    const { pathname, params } = parseUrl(url);
+    calls.push({ url, path: pathname, params });
 
-    if (url === '/api/todos' && method === 'GET') {
-      return json(200, todos.map((t) => Object.assign({}, t)));
+    if (failing.includes(pathname)) {
+      return json(500, { error: 'boom' });
     }
-    if (url === '/api/todos' && method === 'POST') {
-      const body = JSON.parse(options.body);
-      const created = {
-        id: nextId++,
-        title: body.title,
-        done: false,
-        priority: body.priority || 'MEDIUM',
-        createdAt: new Date().toISOString()
-      };
-      todos.push(created);
-      return json(201, Object.assign({}, created));
+    switch (pathname) {
+      case '/api/health':
+        return json(200, data.health);
+      case '/api/kpis':
+        return json(200, Object.assign({}, data.kpis, { from: params.from, to: params.to }));
+      case '/api/deliveries/on-time':
+        return json(200, data.onTime.map((r) => Object.assign({}, r)));
+      case '/api/deliveries/late': {
+        const limit = params.limit === undefined ? data.late.length : Number(params.limit);
+        return json(200, data.late.slice(0, Math.max(0, limit)).map((r) => Object.assign({}, r)));
+      }
+      case '/api/tickets/by-category':
+        return json(200, data.ticketsByCategory.map((r) => Object.assign({}, r)));
+      case '/api/vendors':
+        return json(200, data.vendors.map((r) => Object.assign({}, r)));
+      default:
+        return json(404, { error: 'no route for ' + url });
     }
-    const toggleMatch = url.match(/^\/api\/todos\/(\d+)\/toggle$/);
-    if (toggleMatch && method === 'POST') {
-      const todo = todos.find((t) => t.id === Number(toggleMatch[1]));
-      if (!todo) return json(404, { error: 'not found' });
-      todo.done = !todo.done;
-      return json(200, Object.assign({}, todo));
-    }
-    const idMatch = url.match(/^\/api\/todos\/(\d+)$/);
-    if (idMatch && method === 'DELETE') {
-      const index = todos.findIndex((t) => t.id === Number(idMatch[1]));
-      if (index === -1) return json(404, { error: 'not found' });
-      todos.splice(index, 1);
-      return json(204, null);
-    }
-    return json(404, { error: 'no route for ' + method + ' ' + url });
   }
 
-  return { fetchImpl, todos, calls };
+  return { fetchImpl, calls, data };
 }
 
 /**
- * Load the page and start the app against a fake API seeded with initialTodos.
- * Returns { app, api, document } once the initial list has been fetched.
+ * Load the page and start the app against a fake API. `overrides` replaces any of the
+ * fixtures by name (health, kpis, onTime, late, ticketsByCategory, vendors, failing).
+ * Returns { app, api, document, module } once the initial load has finished.
  */
-async function loadApp(initialTodos) {
+async function loadApp(overrides) {
   const html = readIndexHtml();
   const bodyMatch = html.match(/<body>([\s\S]*)<\/body>/);
   document.body.innerHTML = bodyMatch[1].replace(/<script[^>]*><\/script>/g, '');
 
-  const api = createFakeApi(initialTodos);
+  const api = createFakeApi(overrides);
   global.fetch = api.fetchImpl;
 
   jest.resetModules();
@@ -128,6 +181,8 @@ function requireApp() {
 
 module.exports = {
   REGISTERED_IDS,
+  FIXTURES,
+  TODAY,
   loadApp,
   requireApp,
   createFakeApi,

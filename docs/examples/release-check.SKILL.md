@@ -10,7 +10,7 @@ Copy this file to `.claude/skills/release-check/SKILL.md` and invoke it with
 
 ## Preconditions
 
-- You are at the root of the todo-app repository (`pom.xml` and `package.json`
+- You are at the root of the ops-dashboard repository (`pom.xml` and `package.json`
   are both present).
 - `node_modules/` exists. If not, run `npm install` first and say so.
 - The working tree has the change you intend to ship. Do not stash or discard

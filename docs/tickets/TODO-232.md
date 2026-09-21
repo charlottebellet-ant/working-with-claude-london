@@ -1,4 +1,4 @@
-# TODO-232: Server-side validation for todos
+# TODO-232: Server-side validation of query parameters
 
 **Type:** Hardening
 **Area:** Backend
@@ -6,28 +6,29 @@
 
 ## Story
 
-The API currently stores whatever it is given. A blank title, a title of ten
-thousand characters, or a request without a title all come back as `201 Created`.
-The frontend already prevents empty titles, so this is defence in depth: anything
-that talks to `/api/todos` directly (scripts, the mobile prototype, curl) should get
-a clear error rather than corrupt data.
+The API runs whatever it is given. `from=next-tuesday` blows up inside
+`LocalDate.parse` and comes back as `500 Internal Server Error`; `from` after `to`
+silently returns an empty result that looks like a quiet week; `limit=-1` or
+`limit=99999999` goes straight into the SQL `LIMIT`. The dashboard itself always
+sends sensible values, so this is defence in depth: anything that talks to `/api`
+directly (the wall-screen script, the finance export, curl) should get a clear
+error rather than a stack trace or misleading zeros.
 
-There is a test in `TodoControllerTest` (`createWithBlankTitleIsCurrentlyAccepted`)
-and one in `TodoServiceTest` (`createAcceptsBlankTitle`) that document the current
-behaviour. They will need to change.
+There is a test in `DashboardControllerTest` (`malformedFromCurrentlyProducesA5xx`)
+that documents the current behaviour. It will need to change.
 
 ## Acceptance criteria
 
-- **AC-1** `title` is required on create. It is trimmed, and after trimming it must
-  be between 1 and 200 characters.
-- **AC-2** On update, if `title` is present it is subject to the same rule. A
-  missing `title` on update keeps the existing one.
-- **AC-3** `priority`, when present, must be one of `LOW`, `MEDIUM`, `HIGH`. An
-  unknown value is rejected (today it fails with a generic 400 from the JSON parser;
-  the response must follow AC-4).
+- **AC-1** `from` and `to`, when present, must be valid ISO dates (`YYYY-MM-DD`).
+- **AC-2** `from` must be on or before `to`, and the range may span at most 366 days.
+  The defaults (last 30 days ending today) still apply when a parameter is missing.
+- **AC-3** `limit`, when present, must be an integer between 1 and 500. The default
+  stays 20.
 - **AC-4** Invalid input returns `400 Bad Request` with a JSON body of the form
-  `{ "errors": ["title must be between 1 and 200 characters"] }`. Several problems
-  in one request produce several entries.
+  `{ "errors": ["from must be an ISO date (YYYY-MM-DD)"] }`. Several problems in one
+  request produce several entries. The rules apply to every endpoint that takes the
+  parameter (`/api/kpis`, `/api/deliveries/on-time`, `/api/deliveries/late`,
+  `/api/tickets/by-category`).
 - **AC-5** Existing tests are updated, new tests are added, both suites are green.
 
 Fences:
@@ -38,17 +39,20 @@ Fences:
 
 ## Suggested split for three subagents
 
-- **auditor** (read-only): find every entry point that writes a todo (controller
-  methods, service methods, seed data) and list, per entry point, which fields are
-  unchecked and what happens today with bad input. Output: a short table.
-- **fixer**: implement the validation in the service layer and the 400 response
-  shape in a controller advice, following the auditor's table. No test changes.
-- **verifier**: update the two "currently accepted" tests, add tests for each AC
-  (blank, too long, exactly 200, unknown priority, several errors at once), and run
-  `./mvnw test` and `npm test`. Report both counts.
+- **auditor** (read-only): find every request parameter that reaches a repository
+  query (controller methods, `DateRange.resolve`, the `limit` parameter) and list,
+  per endpoint, which parameters are unchecked and what happens today with bad input.
+  Output: a short table.
+- **fixer**: implement the parsing and range checks in one place (a small validator
+  the controllers call, or inside `DateRange`) and the 400 response shape in a
+  controller advice, following the auditor's table. No test changes.
+- **verifier**: rewrite the "currently produces a 5xx" test, add tests for each AC
+  (malformed date, `from` after `to`, a 367-day range, `limit` 0, `limit` 501, several
+  errors at once, and a valid request still working), and run `./mvnw test` and
+  `npm test`. Report both counts.
 
 ## Definition of done
 
 - Run `./mvnw test` and `npm test` and report both counts.
-- The two tests that documented the old behaviour have been rewritten, not deleted.
-- Restart the app and show one `curl` with a blank title returning 400.
+- The test that documented the old behaviour has been rewritten, not deleted.
+- Restart the app and show one `curl` with `from=next-tuesday` returning 400.

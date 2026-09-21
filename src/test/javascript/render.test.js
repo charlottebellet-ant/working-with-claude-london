@@ -1,51 +1,115 @@
 const { loadApp } = require('./setup/loadApp');
 
-const SEED = [
-  { id: 1, title: 'Order grinder burrs', done: false, priority: 'HIGH', createdAt: '2026-09-01T09:00:00Z' },
-  { id: 2, title: 'Draft price list', done: true, priority: 'MEDIUM', createdAt: '2026-09-01T09:05:00Z' },
-  { id: 3, title: 'Book the van MOT', done: false, priority: 'LOW', createdAt: '2026-09-01T09:10:00Z' }
-];
+function bars(document, selector) {
+  return Array.from(document.querySelectorAll(selector));
+}
 
-describe('rendering', () => {
-  test('shows the app title in the header', async () => {
-    const { document } = await loadApp([]);
-    expect(document.getElementById('app-title').textContent).toBe('Marlowe & Finch Tasks');
+describe('header and KPI tiles', () => {
+  test('shows the app title and subtitle', async () => {
+    const { document } = await loadApp();
+    expect(document.getElementById('app-title').textContent).toBe('Marlowe & Finch Operations');
+    expect(document.getElementById('app-subtitle').textContent).toContain('Deliveries');
   });
 
-  test('renders one list item per todo from the API', async () => {
-    const { document } = await loadApp(SEED);
-    expect(document.querySelectorAll('#todo-list .todo-item')).toHaveLength(3);
+  test('renders the on-time rate tile as a percentage', async () => {
+    const { document } = await loadApp();
+    expect(document.querySelector('#kpi-on-time .kpi-value').textContent).toBe('93.7%');
   });
 
-  test('renders titles in order', async () => {
-    const { document } = await loadApp(SEED);
-    const titles = Array.from(document.querySelectorAll('.todo-title')).map((el) => el.textContent);
-    expect(titles).toEqual(['Order grinder burrs', 'Draft price list', 'Book the van MOT']);
+  test('renders the open tickets and orders tiles as plain counts', async () => {
+    const { document } = await loadApp();
+    expect(document.querySelector('#kpi-open-tickets .kpi-value').textContent).toBe('114');
+    expect(document.querySelector('#kpi-orders .kpi-value').textContent).toBe('624');
   });
 
-  test('marks done todos with the done class and a checked checkbox', async () => {
-    const { document } = await loadApp(SEED);
-    const item = document.querySelector('[data-id="2"]');
-    expect(item.classList.contains('done')).toBe(true);
-    expect(item.querySelector('.toggle').checked).toBe(true);
-    expect(document.querySelector('[data-id="1"]').classList.contains('done')).toBe(false);
+  test('renders the revenue tile as money', async () => {
+    const { document } = await loadApp();
+    expect(document.querySelector('#kpi-revenue .kpi-value').textContent).toBe('£360,095.50');
+  });
+});
+
+describe('on-time chart', () => {
+  test('draws one bar row per carrier, in API order', async () => {
+    const { document } = await loadApp();
+    const rows = bars(document, '#chart-on-time .bar-row');
+    expect(rows.map((g) => g.getAttribute('data-carrier'))).toEqual([
+      'Harbour Express', 'Kessler Logistics', 'Northwind Freight', 'Redwood Couriers'
+    ]);
   });
 
-  test('shows the priority badge with the priority as a class', async () => {
-    const { document } = await loadApp(SEED);
-    const badge = document.querySelector('[data-id="1"] .priority');
-    expect(badge.textContent).toBe('HIGH');
-    expect(badge.classList.contains('HIGH')).toBe(true);
+  test('bar widths are proportional to the rate on a 0 to 100% scale', async () => {
+    const { document } = await loadApp();
+    const widths = bars(document, '#chart-on-time rect.bar').map((r) => Number(r.getAttribute('width')));
+    expect(widths[0]).toBeGreaterThan(widths[1]);
+    expect(widths[0] / widths[1]).toBeCloseTo(0.96 / 0.8981, 3);
   });
 
-  test('shows the remaining count of open items', async () => {
-    const { document } = await loadApp(SEED);
-    expect(document.getElementById('remaining-count').textContent).toBe('2 items left');
+  test('labels each bar with the formatted rate', async () => {
+    const { document } = await loadApp();
+    const values = bars(document, '#chart-on-time .bar-value').map((t) => t.textContent);
+    expect(values).toEqual(['96.0%', '89.8%', '96.4%', '96.8%']);
   });
 
-  test('shows an empty state when there are no todos', async () => {
-    const { document } = await loadApp([]);
-    expect(document.querySelector('#todo-list .empty').textContent).toBe('Nothing to do. Add a task above.');
-    expect(document.getElementById('remaining-count').textContent).toBe('0 items left');
+  test('marks a carrier under 95% with the warn class', async () => {
+    const { document } = await loadApp();
+    const kessler = document.querySelector('#chart-on-time [data-carrier="Kessler Logistics"] rect.bar');
+    const harbour = document.querySelector('#chart-on-time [data-carrier="Harbour Express"] rect.bar');
+    expect(kessler.classList.contains('warn')).toBe(true);
+    expect(harbour.classList.contains('warn')).toBe(false);
+  });
+});
+
+describe('tickets chart', () => {
+  test('draws one column per category with its label', async () => {
+    const { document } = await loadApp();
+    const cols = bars(document, '#chart-tickets .bar-col');
+    expect(cols).toHaveLength(5);
+    expect(cols[0].querySelector('.bar-label').textContent).toBe('Delivery delay');
+  });
+
+  test('the tallest column is the category with most tickets', async () => {
+    const { document } = await loadApp();
+    const heights = bars(document, '#chart-tickets rect.bar').map((r) => Number(r.getAttribute('height')));
+    expect(Math.max(...heights)).toBe(heights[0]);
+    expect(heights[4]).toBeLessThan(heights[0]);
+  });
+});
+
+describe('late deliveries table', () => {
+  test('renders one row per late delivery with the order reference', async () => {
+    const { document } = await loadApp();
+    const rows = bars(document, '#late-body tr');
+    expect(rows).toHaveLength(3);
+    expect(rows.map((r) => r.getAttribute('data-order'))).toEqual(['MF-01801', 'MF-01755', 'MF-01790']);
+  });
+
+  test('shows an empty message when nothing was late', async () => {
+    const { document } = await loadApp({ late: [] });
+    const rows = bars(document, '#late-body tr');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].classList.contains('empty')).toBe(true);
+    expect(rows[0].textContent).toBe('No late deliveries in this range');
+  });
+});
+
+describe('vendors panel', () => {
+  test('lists every vendor with its name', async () => {
+    const { document } = await loadApp();
+    const items = bars(document, '#vendors-list .vendor');
+    expect(items).toHaveLength(5);
+    expect(items[0].querySelector('.vendor-name').textContent).toBe('Volta Parts GmbH');
+  });
+
+  test('highlights renewals inside their notice window', async () => {
+    const { document } = await loadApp();
+    const due = bars(document, '#vendors-list .vendor.renewal-due').map((li) => li.getAttribute('data-vendor'));
+    expect(due).toEqual(['Volta Parts GmbH', 'Lumen Creative', 'Kessler Logistics']);
+  });
+
+  test('does not highlight a vendor whose notice window has not opened', async () => {
+    const { document } = await loadApp();
+    const helpSpark = document.querySelector('#vendors-list [data-vendor="HelpSpark"]');
+    expect(helpSpark.classList.contains('renewal-due')).toBe(false);
+    expect(helpSpark.querySelector('.vendor-end').textContent).toBe('Ends 2026-12-31 (in 101 days), 30 days notice');
   });
 });

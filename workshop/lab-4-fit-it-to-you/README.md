@@ -36,19 +36,21 @@ Add lodash to pom.xml.
 
 The hook blocks the edit with "pom.xml dependencies are frozen. A change needs a CHG ticket." CLAUDE.md is advice. A hook is a wall.
 
-## Step 3: /mcp. Ask Drive how many people used the app
+## Step 3: /mcp. Ask the database which carrier let you down
 
 ```
 /mcp
 ```
 
-Check Google Workspace is connected. Then make sure `docs/data/todo-access-log.csv` is in a Google Drive you can see: copy it into your own My Drive if the mentors have not shared one. Then:
+Check `postgres` is connected (it is the server in `.mcp.json`, reading the compose database; `docker compose up -d db` if it is not). Then:
 
 ```
-How many people used the app last week? The access log is in Google Drive as todo-access-log.csv. Find it, then give me total requests, unique users, and a per-day table.
+Which carrier was late most often last week, and how many deliveries was that? Use the database.
 ```
 
-**No MCP?** The same file is in the repo at `docs/data/todo-access-log.csv`. Ask the same question and point at that path. Compare with your neighbour who used Drive: same numbers, different reach.
+Watch it look at the schema, write the query and answer with a number. Ask a follow-up: "and over the last 30 days, per carrier?"
+
+**No MCP?** The same deliveries are in the repo at `docs/data/deliveries-last-30-days.csv` (order, carrier, promised date, delivered date, days late). Ask the same question and point at that path. Compare with your neighbour who used the database: same numbers, different reach.
 
 ## Step 4: save your definition of done as a skill. Call it by name
 
@@ -71,13 +73,13 @@ It should run both suites, report both counts, and say "baseline held". Now dele
 - [ ] You wrote the cost and wall-clock of TODO-231 on your card
 - [ ] `/security-review` ran and you fixed or ticketed one finding
 - [ ] The pom.xml hook blocked an edit on your screen (or you read why it would)
-- [ ] You answered the access-log question, from Drive or from the repo copy
+- [ ] You answered the late-carrier question, from the database or from the CSV
 - [ ] `/release-check` runs by name and fails when a test is removed
 
 **Badge: Toolmaker.** Show a mentor `/release-check` running by name and holding the baseline. A hook that fired on your screen also counts.
 
 ## If you are stuck
 
-- `/mcp` shows nothing? Use the repo copy of the CSV. The lab is about the question, not the transport.
+- `/mcp` shows `postgres` failed? Is the database up (`docker compose ps`)? If you cannot run Docker, use the CSV in `docs/data/`. The lab is about the question, not the transport.
 - The skill does not trigger by name? Check the folder name matches `name:` in the frontmatter, and start a new session so it is picked up.
 - The skill passes with a test removed? It is not holding the baseline. Fix the skill, not the run.

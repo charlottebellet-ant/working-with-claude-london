@@ -1,73 +1,49 @@
-const { requireApp, createFakeApi } = require('./setup/loadApp');
+const { loadApp } = require('./setup/loadApp');
 
-describe('API client', () => {
-  let createApi;
-  let remainingLabel;
-  let API_URL;
-
-  beforeEach(() => {
-    ({ createApi, remainingLabel, API_URL } = requireApp());
+describe('API calls', () => {
+  test('asks the API for today first, then the four range endpoints and the vendors', async () => {
+    const { api } = await loadApp();
+    const paths = api.calls.map((c) => c.path);
+    expect(paths[0]).toBe('/api/health');
+    expect(paths.slice(1).sort()).toEqual([
+      '/api/deliveries/late',
+      '/api/deliveries/on-time',
+      '/api/kpis',
+      '/api/tickets/by-category',
+      '/api/vendors'
+    ]);
   });
 
-  test('API_URL points at /api/todos', () => {
-    expect(API_URL).toBe('/api/todos');
+  test('asks for at most 20 late deliveries', async () => {
+    const { api } = await loadApp();
+    const late = api.calls.find((c) => c.path === '/api/deliveries/late');
+    expect(late.params.limit).toBe('20');
   });
 
-  test('list GETs /api/todos and returns the JSON body', async () => {
-    const fake = createFakeApi([{ id: 1, title: 'x', done: false, priority: 'LOW' }]);
-    const api = createApi(fake.fetchImpl);
-    const todos = await api.list();
-    expect(todos).toHaveLength(1);
-    expect(fake.calls[0]).toMatchObject({ url: '/api/todos', method: 'GET' });
+  test('the status line is empty after a successful load', async () => {
+    const { document } = await loadApp();
+    expect(document.getElementById('status-line').textContent).toBe('');
+    expect(document.getElementById('status-line').classList.contains('error')).toBe(false);
   });
 
-  test('create POSTs JSON with the right content type', async () => {
-    const seen = [];
-    const fetchImpl = (url, options) => {
-      seen.push({ url, options });
-      return Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ id: 9 }) });
-    };
-    const api = createApi(fetchImpl);
-    const created = await api.create('New', 'HIGH');
-    expect(created).toEqual({ id: 9 });
-    expect(seen[0].options.method).toBe('POST');
-    expect(seen[0].options.headers['Content-Type']).toBe('application/json');
-    expect(JSON.parse(seen[0].options.body)).toEqual({ title: 'New', priority: 'HIGH' });
+  test('shows an error in the status line when a range endpoint fails', async () => {
+    const { document, app } = await loadApp({ failing: ['/api/kpis'] });
+    const status = document.getElementById('status-line');
+    expect(status.classList.contains('error')).toBe(true);
+    expect(status.textContent).toBe('Could not load the dashboard: Request failed: 500 /api/kpis?from=2026-08-22&to=2026-09-21');
+    expect(app.state.error).not.toBeNull();
   });
 
-  test('toggle POSTs to /api/todos/{id}/toggle', async () => {
-    const fake = createFakeApi([{ id: 4, title: 'x', done: false, priority: 'LOW' }]);
-    const api = createApi(fake.fetchImpl);
-    const updated = await api.toggle(4);
-    expect(updated.done).toBe(true);
-    expect(fake.calls[0]).toMatchObject({ url: '/api/todos/4/toggle', method: 'POST' });
+  test('shows an error when the API is unreachable for the health check', async () => {
+    const { document } = await loadApp({ failing: ['/api/health'] });
+    const status = document.getElementById('status-line');
+    expect(status.classList.contains('error')).toBe(true);
+    expect(status.textContent).toBe('Could not reach the API: Request failed: 500 /api/health');
   });
 
-  test('remove sends DELETE and resolves to null on 204', async () => {
-    const fake = createFakeApi([{ id: 4, title: 'x', done: false, priority: 'LOW' }]);
-    const api = createApi(fake.fetchImpl);
-    await expect(api.remove(4)).resolves.toBeNull();
-    expect(fake.todos).toHaveLength(0);
-  });
-
-  test('a non-2xx response rejects with the status and url', async () => {
-    const fetchImpl = () => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
-    const api = createApi(fetchImpl);
-    await expect(api.list()).rejects.toThrow('Request failed: 500 /api/todos');
-  });
-
-  test('a 404 from toggle rejects', async () => {
-    const fake = createFakeApi([]);
-    const api = createApi(fake.fetchImpl);
-    await expect(api.toggle(42)).rejects.toThrow('404');
-  });
-
-  test('remainingLabel uses singular for one item', () => {
-    expect(remainingLabel([{ done: false }])).toBe('1 item left');
-  });
-
-  test('remainingLabel counts only open items', () => {
-    expect(remainingLabel([{ done: false }, { done: true }, { done: false }])).toBe('2 items left');
-    expect(remainingLabel([])).toBe('0 items left');
+  test('a vendors failure does not blank the KPI tiles', async () => {
+    const { document } = await loadApp({ failing: ['/api/vendors'] });
+    expect(document.querySelector('#kpi-orders .kpi-value').textContent).toBe('624');
+    expect(document.getElementById('status-line').textContent).toBe('Could not load vendors: Request failed: 500 /api/vendors');
   });
 });
