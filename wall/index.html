@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Build Wall · presenter hub</title>
+<style>
+  :root{--canvas:#F3F4F8;--ink:#15162B;--muted:#6B6E85;--accent:#6F5CF1;--lavender:#E9E6FF;--peach:#FFE4D6;--radius:24px;--shadow:0 12px 34px rgba(21,22,43,.09)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:32px 20px 60px;max-width:1100px;margin:0 auto}
+  .eyebrow{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  h1{font-size:40px;margin:4px 0 6px;letter-spacing:-.02em;font-weight:800}
+  h1 span{color:var(--accent)}
+  .lead{color:var(--muted);margin:0 0 28px;font-size:17px;max-width:720px}
+  .grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+  .card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;display:flex;flex-direction:column;gap:14px}
+  .card .head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .pill{display:inline-block;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:700}
+  .pill.lavender{background:var(--lavender)} .pill.peach{background:var(--peach)}
+  .card h2{margin:0;font-size:26px;letter-spacing:-.01em}
+  .q{font-weight:700;font-size:17px}
+  .qrrow{display:flex;gap:18px;align-items:center}
+  .qr{background:#fff;padding:8px;border-radius:16px;border:1px solid #EEE;width:196px;height:196px;display:grid;place-items:center;flex:none}
+  .qr canvas,.qr img{width:180px!important;height:180px!important}
+  .links{display:flex;flex-direction:column;gap:8px;min-width:0}
+  .links a{display:block;font-weight:700;color:var(--ink);text-decoration:none;background:#F5F5FA;border-radius:14px;padding:12px 14px;transition:background .15s}
+  .links a:hover{background:var(--lavender)}
+  .links a small{display:block;color:var(--muted);font-weight:600;font-size:12px;word-break:break-all;margin-top:2px}
+  .links a.primary{background:var(--accent);color:#fff}
+  .links a.primary small{color:rgba(255,255,255,.8)}
+  .stats{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
+  .notes{margin-top:34px;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:24px}
+  .notes h3{margin:0 0 10px;font-size:18px}
+  .notes ol{margin:0;padding-left:20px;color:var(--muted)}
+  .notes li{margin:6px 0}
+  .notes b{color:var(--ink)}
+  kbd{background:#F1F1F6;border-radius:6px;padding:1px 6px;font-family:inherit;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="eyebrow">Working with Claude · London</div>
+  <h1>Build <span>Wall</span></h1>
+  <p class="lead">One QR code per session. Attendees scan it, type what they are going to build today, and each idea lands live on the board you project. This page is for the presenters; the two links below are the ones to share.</p>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="notes">
+    <h3>Run of show</h3>
+    <ol>
+      <li>Open the <b>board</b> for the session on the projector laptop and press <kbd>Fullscreen</kbd> (bottom-right, appears on hover). Press <kbd>q</kbd> to show the QR code full-screen.</li>
+      <li>Click <b>Presenter</b> once and enter the admin key: it unlocks hiding a card (hover, ×), <b>Export CSV</b> and <b>Reset wall</b>.</li>
+      <li>Ask the room to scan and answer. Each person can add up to 10 ideas and remove their own from their phone.</li>
+      <li>Before the afternoon session, open the second board: the two sessions have separate walls and separate QR codes.</li>
+    </ol>
+  </div>
+
+<script src="lib/qrcode.min.js"></script>
+<script src="config.js"></script>
+<script src="lib/api.js"></script>
+<script>
+  const SESSIONS = [{"key":"cowork","title":"Cowork","subtitle":"Morning session · 9:30","question":"What are you going to build with Cowork today?","hint":"A brief, a weekly report, a skill for your team… one idea per card.","accent":"lavender"},{"key":"code","title":"Claude Code","subtitle":"Afternoon session · 13:00","question":"What are you going to build with Claude Code today?","hint":"A feature, a fix, an agent, a tool for your repo… one idea per card.","accent":"peach"}];
+  const grid = document.getElementById('grid');
+  for (const s of SESSIONS) {
+    const join = new URL('join/' + s.key + '/', location.href).href;
+    const board = new URL('board/' + s.key + '/', location.href).href;
+    const card = document.createElement('div'); card.className = 'card';
+    const head = document.createElement('div'); head.className = 'head';
+    const h2 = document.createElement('h2'); h2.textContent = s.title;
+    const pill = document.createElement('span'); pill.className = 'pill ' + s.accent; pill.textContent = s.subtitle;
+    head.append(h2, pill);
+    const q = document.createElement('div'); q.className = 'q'; q.textContent = s.question;
+    const row = document.createElement('div'); row.className = 'qrrow';
+    const qr = document.createElement('div'); qr.className = 'qr';
+    try { new QRCode(qr, { text: join, width: 180, height: 180, colorDark: '#15162B', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M }); } catch (e) { qr.textContent = join; }
+    const links = document.createElement('div'); links.className = 'links';
+    const mk = (href, label, sub, cls) => { const a = document.createElement('a'); a.href = href; a.className = cls || ''; a.textContent = label; const sm = document.createElement('small'); sm.textContent = sub; a.appendChild(sm); return a; };
+    links.append(mk(board, 'Open the board (projector)', board, 'primary'), mk(join, 'Attendee page', join.replace(/^https?:\/\//, '')));
+    row.append(qr, links);
+    const stats = document.createElement('div'); stats.className = 'stats'; stats.textContent = '…';
+    card.append(head, q, row, stats); grid.appendChild(card);
+    const upd = async () => { try { const d = await window.BuildWall.stats(s.key); stats.textContent = d.count + ' ideas from ' + d.people + ' people so far'; } catch (e) { stats.textContent = window.BuildWall.configured ? '' : 'Not connected: fill in config.js and rebuild.'; } };
+    upd(); setInterval(upd, 5000);
+  }
+</script>
+</body>
+</html>
