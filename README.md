@@ -28,7 +28,7 @@ Each lab README has the copy-ready prompts, a done-when list, what to show a men
 | `docs/examples/agents/` | Lab 5, the auditor, fixer and verifier subagents |
 | `docs/examples/routine.md` | Lab 5, the nightly release check |
 | `.devcontainer/` | Codespaces: Java 17, Node 20 and Claude Code pre-installed |
-| `.github/workflows/ci.yml` | Runs both test suites on every pull request |
+| `docs/examples/ci.workflow.yml` | A GitHub Actions workflow that runs both suites on every pull request. Copy it to `.github/workflows/ci.yml` in your copy to switch CI on |
 
 There is deliberately no `CLAUDE.md` and no `.claude/` folder. You create them in Lab 3.
 
@@ -95,7 +95,7 @@ todo-app/
 ├── src/test/javascript/         Jest tests and the harness
 ├── docs/                        Workshop material
 ├── .devcontainer/               GitHub Codespaces setup (no local install needed)
-└── .github/workflows/ci.yml     Runs both suites on pull requests
+└── docs/examples/ci.workflow.yml  CI workflow to copy into .github/workflows/
 ```
 
 ### API
