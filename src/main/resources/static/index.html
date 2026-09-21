@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marlowe &amp; Finch Tasks</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header id="app-header" class="header">
+      <h1 id="app-title">Marlowe &amp; Finch Tasks</h1>
+      <p id="app-subtitle" class="subtitle">Internal task tracker</p>
+    </header>
+
+    <main>
+      <form id="todo-form" class="todo-form" autocomplete="off">
+        <input id="todo-input" type="text" placeholder="What needs doing?" required>
+        <select id="todo-priority" aria-label="Priority">
+          <option value="LOW">Low</option>
+          <option value="MEDIUM" selected>Medium</option>
+          <option value="HIGH">High</option>
+        </select>
+        <button id="add-button" type="submit">Add</button>
+      </form>
+
+      <div id="filters" class="filters" role="group" aria-label="Filter">
+        <button id="filter-all" class="filter active" type="button">All</button>
+        <button id="filter-open" class="filter" type="button">Open</button>
+        <button id="filter-done" class="filter" type="button">Done</button>
+      </div>
+
+      <ul id="todo-list" class="todo-list"></ul>
+
+      <footer id="list-footer" class="list-footer">
+        <span id="remaining-count">0 items left</span>
+        <button id="clear-done" type="button">Clear done</button>
+      </footer>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
