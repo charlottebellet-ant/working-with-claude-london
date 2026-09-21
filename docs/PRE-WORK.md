@@ -19,20 +19,22 @@ Maven is not needed; the repo ships the Maven wrapper (`./mvnw`).
 
 **Option B: GitHub Codespaces (nothing to install)**
 
-Open the repository on GitHub, click *Code*, then *Codespaces*, then *Create
-codespace on main*. The container in `.devcontainer/` has Java 17, Node 20, and
+Open https://github.com/charlottebellet-ant/working-with-claude-london on GitHub, press *Use this template*
+→ *Create a new repository* into your own account, then on your copy click
+*Code*, then *Codespaces*, then *Create codespace on main*. The container in `.devcontainer/` has Java 17, Node 20, and
 Claude Code preinstalled. Give it two minutes the first time.
 
 **Option C: Claude Code on the web**
 
-Connect the repository from claude.ai/code. The cloud environment installs the
+Create your own copy of the repository as in Option B, then connect it from
+claude.ai/code. The cloud environment installs the
 same tools. You can still follow along; a few local-only steps (hooks, the
 browser refresh) will be shown on stage.
 
 ## 2. Clone and install
 
 ```bash
-git clone <the repository URL you were sent> todo-app
+git clone https://github.com/charlottebellet-ant/working-with-claude-london.git todo-app
 cd todo-app
 npm install
 ```
@@ -71,7 +73,7 @@ before the session (it prints `Tests run: 25, Failures: 0, Errors: 0`).
 
 ## 4. Two blocks you will paste during the workshop
 
-Keep these somewhere handy. You will paste them into Claude Code in Part 2.
+Keep these somewhere handy. You will paste them into Claude Code in Part 3.
 
 ### The brief for TODO-231
 

@@ -1,5 +1,7 @@
 # todo-app
 
+Repository: https://github.com/charlottebellet-ant/working-with-claude-london
+
 The internal task tracker at Marlowe & Finch, a coffee-equipment company. A small
 Spring Boot REST API with an in-memory store, plus a plain-JavaScript single-page
 frontend served from the same process.
