@@ -102,6 +102,38 @@
     return Math.round((parseIso(iso) - parseIso(today)) / 86400000);
   }
 
+  var THEME_STORAGE_KEY = 'ops-dashboard-theme';
+  var DEFAULT_THEME = 'dark'; // resolved with the user for TODO-231
+
+  /** 'light' -> 'dark', 'dark' -> 'light'. */
+  function oppositeTheme(theme) {
+    return theme === 'dark' ? 'light' : 'dark';
+  }
+
+  /** A valid stored value wins; otherwise DEFAULT_THEME. */
+  function resolveInitialTheme(storedValue) {
+    return storedValue === 'light' || storedValue === 'dark' ? storedValue : DEFAULT_THEME;
+  }
+
+  /** The button always advertises the theme you'll get by clicking, not the current one. */
+  function themeToggleContent(theme) {
+    return theme === 'dark'
+      ? { label: '☀️ Light mode', ariaLabel: 'Switch to light theme' }
+      : { label: '🌙 Dark mode', ariaLabel: 'Switch to dark theme' };
+  }
+
+  function updateThemeToggleButton(button, theme) {
+    var content = themeToggleContent(theme);
+    button.textContent = content.label;
+    button.setAttribute('aria-label', content.ariaLabel);
+  }
+
+  function applyTheme(doc, button, theme) {
+    doc.documentElement.setAttribute('data-theme', theme);
+    updateThemeToggleButton(button, theme);
+    return theme;
+  }
+
   // ---------- App ----------
 
   function initApp(document, fetchImpl) {
@@ -122,8 +154,27 @@
       chartOnTime: document.getElementById('chart-on-time'),
       chartTickets: document.getElementById('chart-tickets'),
       lateBody: document.getElementById('late-body'),
-      vendors: document.getElementById('vendors-list')
+      vendors: document.getElementById('vendors-list'),
+      themeToggle: document.getElementById('theme-toggle')
     };
+
+    function readStoredTheme() {
+      try {
+        return window.localStorage.getItem(THEME_STORAGE_KEY);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function writeStoredTheme(value) {
+      try {
+        window.localStorage.setItem(THEME_STORAGE_KEY, value);
+      } catch (e) {
+        /* private mode / quota / disabled storage: theme just won't persist */
+      }
+    }
+
+    var theme = applyTheme(document, els.themeToggle, resolveInitialTheme(readStoredTheme()));
 
     var state = {
       today: null,
@@ -345,6 +396,12 @@
       });
     });
 
+    els.themeToggle.addEventListener('click', function () {
+      theme = oppositeTheme(theme);
+      applyTheme(document, els.themeToggle, theme);
+      writeStoredTheme(theme);
+    });
+
     var ready = api.health().then(function (health) {
       state.today = health.today;
       var range = applyPreset(DEFAULT_PRESET_DAYS, state.today);
@@ -372,7 +429,10 @@
     formatMoney: formatMoney,
     barWidths: barWidths,
     applyPreset: applyPreset,
-    daysUntil: daysUntil
+    daysUntil: daysUntil,
+    oppositeTheme: oppositeTheme,
+    resolveInitialTheme: resolveInitialTheme,
+    themeToggleContent: themeToggleContent
   };
 
   if (typeof module !== 'undefined') {
