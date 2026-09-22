@@ -18,11 +18,6 @@
     --accent: #d97757; --accent-deep: #e58a6a; --accent-soft: #3a2a22; --good: #1f3325; --good-ink: #9fd3ac; --warn: #3d2418; --warn-ink: #f0a688;
     --box: #d97757; --box-dark: #a34f32; --ribbon: #faf9f5; --shadow: 0 24px 60px rgba(0,0,0,.45);
   } }
-  :root[data-theme="dark"] {
-    color-scheme: dark; --canvas: #141413; --card: #1f1e1b; --ink: #faf9f5; --muted: #b0aea5; --line: #33322e;
-    --accent: #d97757; --accent-deep: #e58a6a; --accent-soft: #3a2a22; --good: #1f3325; --good-ink: #9fd3ac; --warn: #3d2418; --warn-ink: #f0a688;
-    --box: #d97757; --box-dark: #a34f32; --ribbon: #faf9f5; --shadow: 0 24px 60px rgba(0,0,0,.45);
-  }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body { margin: 0; background: var(--canvas); color: var(--ink); font: 16px/1.5 Figtree, -apple-system, "Segoe UI", sans-serif; display: grid; place-items: center; padding: 24px 16px; }
@@ -241,14 +236,15 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     err.classList.remove('show');
-    const email = emailEl.value.trim();
+    const email = emailEl.value.trim().toLowerCase();
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) return showError(MESSAGES.invalid);
     submit.disabled = true; submit.textContent = 'Wrapping it up…';
     if (scene.dataset.state !== 'done') setState('busy');
     try {
-      const token = saved && saved.email === email.toLowerCase() ? saved.token : null;
-      const [data] = await rpc('claim_coupon', { p_email: email, p_token: token });
-      if (!data || data.status in MESSAGES) { showError(MESSAGES[data?.status] || 'Something went wrong.'); submit.textContent = 'Open my gift'; return; }
+      const token = saved && saved.email === email ? saved.token : null;
+      const result = await rpc('claim_coupon', { p_email: email, p_token: token });
+      const data = Array.isArray(result) ? result[0] : result;
+      if (!data || Object.prototype.hasOwnProperty.call(MESSAGES, data.status)) { showError(MESSAGES[data?.status] || 'Something went wrong.'); submit.textContent = 'Open my gift'; return; }
       saved = { email: data.email, token: data.token };
       try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch {}
       // let the gift wiggle for a beat before the reveal
