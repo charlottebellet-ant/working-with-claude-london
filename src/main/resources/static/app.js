@@ -13,6 +13,8 @@
   var DEFAULT_PRESET_DAYS = 30;
   var LATE_LIMIT = 20;
   var SVG_NS = 'http://www.w3.org/2000/svg';
+  var THEME_STORAGE_KEY = 'theme';
+  var DEFAULT_THEME = 'dark';
 
   // ---------- API client ----------
 
@@ -104,11 +106,44 @@
 
   // ---------- App ----------
 
+  /** The theme a click on the toggle switches *to*, given the current one. */
+  function otherTheme(theme) {
+    return theme === 'dark' ? 'light' : 'dark';
+  }
+
+  function initTheme(document, toggleButton) {
+    var root = document.documentElement;
+
+    function applyTheme(theme) {
+      root.setAttribute('data-theme', theme);
+      toggleButton.textContent = otherTheme(theme) === 'dark' ? 'Dark theme' : 'Light theme';
+    }
+
+    var stored = null;
+    try {
+      stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    } catch (e) {
+      stored = null;
+    }
+    applyTheme(stored === 'light' || stored === 'dark' ? stored : DEFAULT_THEME);
+
+    toggleButton.addEventListener('click', function () {
+      var next = otherTheme(root.getAttribute('data-theme'));
+      applyTheme(next);
+      try {
+        window.localStorage.setItem(THEME_STORAGE_KEY, next);
+      } catch (e) {
+        // localStorage unavailable (e.g. private browsing) - theme just won't persist.
+      }
+    });
+  }
+
   function initApp(document, fetchImpl) {
     var api = createApi(fetchImpl);
 
     var els = {
       status: document.getElementById('status-line'),
+      themeToggle: document.getElementById('theme-toggle'),
       form: document.getElementById('range-form'),
       from: document.getElementById('range-from'),
       to: document.getElementById('range-to'),
@@ -124,6 +159,8 @@
       lateBody: document.getElementById('late-body'),
       vendors: document.getElementById('vendors-list')
     };
+
+    initTheme(document, els.themeToggle);
 
     var state = {
       today: null,
